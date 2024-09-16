@@ -10,89 +10,145 @@ const App = () => (
 export default App
 
 const Flowsheet = () => {
-  const [courses, setCourses] = useState<courseProps[]>(courseData)
+  const [courses, setCourses] = useState<CourseData[]>(courseList)
 
   return (
     <>
-      <div className="flex h-full w-full gap-1">
+      <div className="flex h-full w-full gap-1 mr-1">
         <Semester
           name="First"
-          semester="first"
+          id={1}
           courses={courses}
           setCourses={setCourses}
         />
         <Semester
           name="Second"
-          semester="second"
+          id={2}
           courses={courses}
           setCourses={setCourses}
         />
       </div>
-      <StudyPlan
-        name="Study Plan"
-        studyPlan="computerScience"
-        courses={courses}
-        setCourses={setCourses}
-      />
+      <StudyPlan name="Study Plan" courses={courses} setCourses={setCourses} />
     </>
   )
 }
 
-type semesterProps = {
+type SemesterProps = {
+  id: number
   name: string
-  semester: string
-  courses: courseProps[]
-  setCourses: React.Dispatch<React.SetStateAction<courseProps[]>>
+  courses: CourseData[]
+  setCourses: React.Dispatch<React.SetStateAction<CourseData[]>>
 }
 
-const Semester = ({ name, semester, courses, setCourses }: semesterProps) => {
+const Semester = ({ id, name, courses, setCourses }: SemesterProps) => {
   const [isActive, setIsActive] = useState(false)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsActive(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsActive(false)
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    const courseId = e.dataTransfer.getData('courseId')
+
+    setCourses((courses) =>
+      courses.map((c) =>
+        c.id.toString() === courseId ? { ...c, semesterId: id } : c
+      )
+    )
+
+    setIsActive(false)
+  }
+
+  const semesterCourses = courses.filter((c) => c.semesterId === id)
 
   return (
     <div
-      className={`w-36 overflow-clip rounded-lg transition-all ${
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDragEnd}
+      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
         isActive ? 'bg-neutral-800' : 'bg-neutral-900'
       }`}
     >
       <header className="text-center font-semibold py-2">{name}</header>
-      <div className="flex flex-col gap-2 px-2">
-        {courses.map((c) => (
-          <Course key={c.code} {...c} />
+      <div className="min-w-36 flex flex-col gap-2 px-2">
+        {semesterCourses.map((c) => (
+          <Course key={c.id} {...c} />
         ))}
       </div>
     </div>
   )
 }
 
-type studyPlanProps = {
+type StudyPlanProps = {
   name: string
-  studyPlan: string
-  courses: courseProps[]
-  setCourses: React.Dispatch<React.SetStateAction<courseProps[]>>
+  courses: CourseData[]
+  setCourses: React.Dispatch<React.SetStateAction<CourseData[]>>
 }
 
-const StudyPlan = ({
-  name,
-  studyPlan,
-  courses,
-  setCourses,
-}: studyPlanProps) => (
-  <div className="w-64">
-    <header className="text-center font-semibold py-2">{name}</header>
-    <div className="grid grid-cols-2 w-full"></div>
-  </div>
-)
+const StudyPlan = ({ name, courses, setCourses }: StudyPlanProps) => {
+  const [isActive, setIsActive] = useState(false)
 
-type courseProps = {
-  code: string
-  name: string
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsActive(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsActive(false)
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    const courseId = e.dataTransfer.getData('courseId')
+
+    setCourses((courses) =>
+      courses.map((c) =>
+        c.id.toString() === courseId ? { ...c, semesterId: null } : c
+      )
+    )
+
+    setIsActive(false)
+  }
+
+  const studyPlanCourses = courses.filter((c) => c.semesterId === null)
+
+  return (
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDragEnd}
+      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
+        isActive ? 'bg-neutral-800' : 'bg-neutral-900'
+      }`}
+    >
+      <header className="text-center font-semibold py-2">{name}</header>
+      <div className="min-w-36 flex flex-col gap-2 px-2">
+        
+        {studyPlanCourses.map((c) => (
+          <Course key={c.id} {...c} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
-const Course = ({ code, name }: courseProps) => {
+interface CourseProps extends CourseData {}
+
+const Course = ({ id, code, name, creditHours }: CourseProps) => {
+  const handleDragStart = (e: React.DragEvent, id: number) => {
+    e.dataTransfer.setData('courseId', id.toString())
+  }
+
   return (
     <div
       draggable="true"
-      className="active:cursor-grabbing rounded p-2 shadow h-32 bg-neutral-900"
+      onDragStart={(e) => handleDragStart(e, id)}
+      className="bg-neutral-800 active:cursor-grabbing p-2 shadow h-32 w-32 border border-neutral-700 rounded-md"
     >
       <header className="font-semibold">{code}</header>
       <p className="line-clamp-3">{name}</p>
@@ -100,13 +156,30 @@ const Course = ({ code, name }: courseProps) => {
   )
 }
 
-const courseData: courseProps[] = [
+type CourseData = {
+  id: number
+  code: string
+  name: string
+  creditHours: number
+  sectionId: number
+  semesterId: number | null
+}
+
+const courseList: CourseData[] = [
   {
+    id: 1,
     code: 'CS116',
     name: 'Computing Fundamentals',
+    creditHours: 3,
+    sectionId: 1,
+    semesterId: null
   },
   {
+    id: 2,
     code: 'CS263',
     name: 'Database Management Systems',
+    creditHours: 3,
+    sectionId: 2,
+    semesterId: null
   },
 ]
