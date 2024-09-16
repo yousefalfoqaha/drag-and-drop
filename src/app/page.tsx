@@ -76,7 +76,7 @@ const Semester = ({ id, name, courses, setCourses }: SemesterProps) => {
       }`}
     >
       <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-36 flex flex-col gap-2 px-2">
+      <div className="min-w-40 flex flex-col gap-2 px-2">
         {semesterCourses.map((c) => (
           <Course key={c.id} {...c} />
         ))}
@@ -127,8 +127,7 @@ const StudyPlan = ({ name, courses, setCourses }: StudyPlanProps) => {
       }`}
     >
       <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-36 flex flex-col gap-2 px-2">
-        
+      <div className="min-w-40 flex flex-col gap-2 px-2">
         {studyPlanCourses.map((c) => (
           <Course key={c.id} {...c} />
         ))}
@@ -148,10 +147,13 @@ const Course = ({ id, code, name, creditHours }: CourseProps) => {
     <div
       draggable="true"
       onDragStart={(e) => handleDragStart(e, id)}
-      className="bg-neutral-800 active:cursor-grabbing p-2 shadow h-32 w-32 border border-neutral-700 rounded-md"
+      className="bg-neutral-800 active:cursor-grabbing p-2 shadow h-36 w-36 transition-all border border-neutral-700 rounded-md flex flex-col hover:bg-purple-500/30"
     >
       <header className="font-semibold">{code}</header>
       <p className="line-clamp-3">{name}</p>
+      <footer className="text-right mt-auto text-neutral-500">
+        {creditHours} Cr Hr
+      </footer>
     </div>
   )
 }
@@ -172,7 +174,7 @@ const courseList: CourseData[] = [
     name: 'Computing Fundamentals',
     creditHours: 3,
     sectionId: 1,
-    semesterId: null
+    semesterId: null,
   },
   {
     id: 2,
@@ -180,6 +182,6 @@ const courseList: CourseData[] = [
     name: 'Database Management Systems',
     creditHours: 3,
     sectionId: 2,
-    semesterId: null
+    semesterId: null,
   },
 ]
