@@ -1,9 +1,10 @@
 'use client'
-
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useState } from 'react'
 
 const App = () => (
-  <div className="flex p-12 bg-neutral-900 h-screen w-full text-zinc-100">
+  <div className="flex p-12 h-screen w-full">
     <Flowsheet {...flowsheet} />
   </div>
 )
@@ -13,117 +14,160 @@ interface flowsheetProps extends flowsheetData {}
 
 const Flowsheet = ({ id, name, years }: flowsheetProps) => {
   return (
-    <>
-      <header>{name}</header>
-      <div className="flex h-full w-full gap-1 mr-1">
+    <main>
+      <header className="text-2xl font-semibold py-2">{name}</header>
+      <div className="flex gap-1">
         {years.map((year) => (
           <Year key={year.id} {...year} />
         ))}
       </div>
-    </>
+    </main>
   )
 }
 
 interface yearProps extends yearData {}
 
-const Year = ({ id, name, semesters }: yearProps) => {
+const Year = ({ name, semesters }: yearData) => {
   return (
-    <>
-      <header>{name}</header>
-      <div className="flex gap-1">
+    <section>
+      <p className="text-center font-semibold p-2 border rounded-lg border-neutral-700">
+        {name}
+      </p>
+      <div className="flex gap-1 my-1">
         {semesters.map((semester) => (
           <Semester key={semester.id} {...semester} />
         ))}
       </div>
-    </>
+    </section>
   )
 }
 
 interface semesterProps extends semesterData {}
 
+const getCourseByIdFromStudyPlan = (courseId: number) => {
+  const section = studyPlan.sections.find((section) =>
+    section.courses.some((course) => course.id === courseId)
+  )
+
+  return section
+    ? section.courses.find((course) => course.id === courseId)
+    : null
+}
+
 const Semester = ({ id, name, courseIds }: semesterProps) => {
-  const [isActive, setIsActive] = useState(false)
+  const removedCourses = []
+
+  const courses: courseData[] = courseIds
+    .map((id) => getCourseByIdFromStudyPlan(id))
+    .filter((course): course is courseData => course !== null)
+
+  const totalCreditHours = courses.reduce(
+    (total, course) => total + course.creditHours,
+    0
+  )
 
   return (
-    <div
-      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
-        isActive ? 'bg-neutral-800' : 'bg-neutral-900'
-      }`}
-    >
-      <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-40 flex flex-col gap-2 px-2">
-        {courseIds.map((c) => (
-          <Course key={c} />
+    <>
+      <section className="flex flex-col gap-1 w-36">
+        <header className=" text-center">
+          <h1>{name}</h1>
+          <p className="font-semibold text-xs text-neutral-500">
+            {totalCreditHours} Cr Hr
+          </p>
+        </header>
+        {courses.map((course) => (
+          <Course key={course.id} {...course} />
         ))}
-      </div>
-    </div>
+        <StudyPlan {...studyPlan} />
+      </section>
+    </>
   )
 }
 
-type StudyPlanProps = {
-  name: string
-  courses: courseData[]
-  setCourses: React.Dispatch<React.SetStateAction<courseData[]>>
-}
+import { Plus } from 'lucide-react'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+interface studyPlanProps extends studyPlanData {}
 
-const StudyPlan = ({ name, courses, setCourses }: StudyPlanProps) => {
-  const [isActive, setIsActive] = useState(false)
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsActive(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsActive(false)
-  }
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    const courseId = e.dataTransfer.getData('courseId')
-
-    setCourses((courses) =>
-      courses.map((c) =>
-        c.id.toString() === courseId ? { ...c, semesterId: null } : c
-      )
-    )
-
-    setIsActive(false)
-  }
-
-  const studyPlanCourses = courses.filter((c) => c.semesterId === null)
+const StudyPlan = ({ name, major, degree, sections }: studyPlanProps) => {
+  const [isHovered, setIsHovered] = useState(false)
 
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDragEnd}
-      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
-        isActive ? 'bg-neutral-800' : 'bg-neutral-900'
-      }`}
-    >
-      <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-40 flex flex-col gap-2 px-2">
-        {studyPlanCourses.map((c) => (
-          <Course key={c.id} {...c} />
-        ))}
-      </div>
-    </div>
+    <Dialog>
+      <DialogTrigger>
+        <Button variant="ghost" className="w-full">
+          <Plus
+            className={`transition-transform duration-300 ${
+              isHovered ? 'scale-100' : 'scale-75'
+            }`}
+          />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Study Plan Courses</DialogTitle>
+          <DialogDescription>
+            Add available courses to first semester (first year)
+          </DialogDescription>
+        </DialogHeader>
+        <section>
+          <ScrollArea className="w-full h-64">
+            <div className="flex flex-wrap">
+              {sections.map((section) =>
+                section.courses.map((course) => (
+                  <Course key={course.id} {...course} />
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </section>
+        <DialogFooter>
+          <DialogClose>
+            <Button type="submit">Confirm</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
+
+// interface sectionProps extends sectionData {}
+
+// const Section = ({ id, name, requiredCreditHours, courses }: sectionProps) => {
+//   return (
+//     <AccordionItem value={`item-${id}`} className="px-4 border-neutral-700">
+//       <AccordionTrigger>
+//         <div className="text-left">
+//           <h1 className="font-normal text-start pr-4">{name}</h1>
+//           <p className="mt-1 font-semibold text-muted-foreground text-xs">
+//             {requiredCreditHours} Cr Hr required
+//           </p>
+//         </div>
+//       </AccordionTrigger>
+//       <AccordionContent>
+//         <div className="grid grid-cols-2 gap-1">
+//           {courses.map((course) => (
+//             <Course key={course.id} {...course} />
+//           ))}
+//         </div>
+//       </AccordionContent>
+//     </AccordionItem>
+//   )
+// }
 
 interface CourseProps extends courseData {}
 
 const Course = ({ id, code, name, creditHours }: CourseProps) => {
-  const handleDragStart = (e: React.DragEvent, id: number) => {
-    e.dataTransfer.setData('courseId', id.toString())
-  }
-
   return (
-    <div
-      draggable="true"
-      onDragStart={(e) => handleDragStart(e, id)}
-      className="bg-neutral-800 active:cursor-grabbing p-2 shadow h-36 w-36 transition-all border border-neutral-700 rounded-md flex flex-col hover:bg-purple-500/30"
-    >
+    <div className="p-2 h-36 w-36 transition-all border border-neutral-700 rounded-md flex flex-col hover:bg-purple-500/30">
       <header className="font-semibold">{code}</header>
       <p className="line-clamp-3">{name}</p>
       <footer className="text-right mt-auto text-neutral-500">
@@ -515,12 +559,12 @@ const flowsheet: flowsheetData = {
         {
           id: 3,
           name: 'First',
-          courseIds: [1, 2, 3, 4, 5],
+          courseIds: [1, 2],
         },
         {
           id: 4,
           name: 'Second',
-          courseIds: [6, 7, 8, 9, 10, 11],
+          courseIds: [4, 6],
         },
         // {
         //   id: 4,
@@ -536,12 +580,12 @@ const flowsheet: flowsheetData = {
         {
           id: 3,
           name: 'First',
-          courseIds: [15, 16, 17, 18, 19, 20, 21],
+          courseIds: [],
         },
         {
           id: 4,
           name: 'Second',
-          courseIds: [22, 23, 24, 25, 27],
+          courseIds: [5],
         },
         // {
         //   id: 4,
