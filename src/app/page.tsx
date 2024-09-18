@@ -1,154 +1,209 @@
 'use client'
-
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  studyPlanData,
+  sectionData,
+  courseData,
+  yearData,
+  semesterData,
+  studyPlan,
+  courses,
+  sections,
+  flowsheet,
+  years,
+  semesters,
+  flowsheetData,
+} from '@/lib/data'
 
-const App = () => (
-  <div className="flex p-12 bg-neutral-900 h-screen w-full text-zinc-100">
-    <Flowsheet />
-  </div>
-)
+const App = () => {
+  return (
+    <div className="flex p-12 h-screen w-full">
+      <Flowsheet {...flowsheet} />
+    </div>
+  )
+}
+
 export default App
 
-const Flowsheet = () => {
-  const [courses, setCourses] = useState<CourseData[]>(courseList)
+interface flowsheetProps extends flowsheetData {}
+
+const Flowsheet = ({ id, name, yearIds }: flowsheetProps) => {
+
+  const years = yearIds.map(id)
+
+  return (
+    <main>
+      <header className="text-2xl font-semibold py-2">{name}</header>
+      <div className="flex gap-1">
+        {yearIds.map((id) => {
+          let year = years.find((year) => year.id === id)
+          
+          <Year key={year.id} {...year} />
+          })}
+      </div>
+    </main>
+  )
+}
+
+interface yearProps extends yearData {
+  flowsheet: flowsheetData
+  setFlowsheet: React.Dispatch<React.SetStateAction<flowsheetData>>
+}
+
+const Year = ({ name, semesters, flowsheet, setFlowsheet }: yearProps) => {
+  return (
+    <section>
+      <p className="text-center font-semibold p-2 border rounded-lg border-neutral-400">
+        {name}
+      </p>
+      <div className="flex gap-1 my-1">
+        {semesters.map((semester) => (
+          <Semester
+            key={semester.id}
+            {...semester}
+            flowsheet={flowsheet}
+            setFlowsheet={setFlowsheet}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const getCourseByIdFromStudyPlan = (courseId: number) => {
+  const section = studyPlanData.sections.find((section) =>
+    section.courses.some((course) => course.id === courseId)
+  )
+
+  return section
+    ? section.courses.find((course) => course.id === courseId)
+    : null
+}
+
+interface semesterProps extends semesterData {
+  setFlowsheet: React.Dispatch<React.SetStateAction<flowsheetData>>
+}
+
+const Semester = ({ id, name, courseIds, setFlowsheet }: semesterProps) => {
+  const courses: courseData[] = courseIds
+    .map((id) => getCourseByIdFromStudyPlan(id))
+    .filter((course): course is courseData => course !== null)
+
+  const totalCreditHours = courses.reduce(
+    (total, course) => total + course.creditHours,
+    0
+  )
 
   return (
     <>
-      <div className="flex h-full w-full gap-1 mr-1">
-        <Semester
-          name="First"
-          id={1}
-          courses={courses}
-          setCourses={setCourses}
+      <section className="flex flex-col gap-1 w-36">
+        <header className="text-center">
+          <h1>{name}</h1>
+          <p className="font-semibold text-xs text-neutral-500">
+            {totalCreditHours} Cr Hr
+          </p>
+        </header>
+        {courses.map((course) => (
+          <CourseCard key={course.id} {...course} />
+        ))}
+        <StudyPlan
+          {...studyPlanData}
+          setFlowsheet={setFlowsheet}
+          selectedSemester={{ id, name, courseIds }}
         />
-        <Semester
-          name="Second"
-          id={2}
-          courses={courses}
-          setCourses={setCourses}
-        />
-      </div>
-      <StudyPlan name="Study Plan" courses={courses} setCourses={setCourses} />
+      </section>
     </>
   )
 }
 
-type SemesterProps = {
-  id: number
-  name: string
-  courses: CourseData[]
-  setCourses: React.Dispatch<React.SetStateAction<CourseData[]>>
+interface studyPlanProps extends studyPlanData {
+  setFlowsheet: React.Dispatch<React.SetStateAction<flowsheetData>>
+  selectedSemester: semesterData
 }
 
-const Semester = ({ id, name, courses, setCourses }: SemesterProps) => {
-  const [isActive, setIsActive] = useState(false)
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsActive(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsActive(false)
-  }
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    const courseId = e.dataTransfer.getData('courseId')
-
-    setCourses((courses) =>
-      courses.map((c) =>
-        c.id.toString() === courseId ? { ...c, semesterId: id } : c
+const StudyPlan = ({
+  name,
+  sections,
+  selectedSemester,
+  setFlowsheet,
+}: studyPlanProps) => {
+  const handleAddCourse = (courseId: number) => {
+    setFlowsheet((prevFlowsheet) => {
+      const updatedSemesters = prevFlowsheet.semesters.map((semester) =>
+        semester.id === selectedSemester.id
+          ? { ...semester, courseIds: [...semester.courseIds, courseId] }
+          : semester
       )
-    )
 
-    setIsActive(false)
+      return {
+        ...prevFlowsheet,
+        semesters: updatedSemesters,
+      }
+    })
   }
-
-  const semesterCourses = courses.filter((c) => c.semesterId === id)
 
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDragEnd}
-      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
-        isActive ? 'bg-neutral-800' : 'bg-neutral-900'
-      }`}
-    >
-      <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-40 flex flex-col gap-2 px-2">
-        {semesterCourses.map((c) => (
-          <Course key={c.id} {...c} />
-        ))}
-      </div>
-    </div>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          className="w-full hover:h-36 transition-all hover:border border-neutral-400"
+        >
+          <Plus className="transition-transform text-neutral-700 duration-300 scale-75" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{name}</DialogTitle>
+          <DialogDescription>
+            Add available courses to {selectedSemester.name.toLowerCase()}{' '}
+            semester
+          </DialogDescription>
+        </DialogHeader>
+        <section>
+          <ScrollArea>
+            <div className="grid grid-cols-3 gap-1 h-72">
+              {sections.map((section) =>
+                section.courses.map((course) => (
+                  <Course
+                    onClick={() => handleAddCourse(course.id)}
+                    key={course.id}
+                    {...course}
+                  />
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </section>
+        Courses selected: 0
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="submit">Add Courses</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
-type StudyPlanProps = {
-  name: string
-  courses: CourseData[]
-  setCourses: React.Dispatch<React.SetStateAction<CourseData[]>>
-}
+interface courseCardProps extends courseData {}
 
-const StudyPlan = ({ name, courses, setCourses }: StudyPlanProps) => {
-  const [isActive, setIsActive] = useState(false)
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsActive(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsActive(false)
-  }
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    const courseId = e.dataTransfer.getData('courseId')
-
-    setCourses((courses) =>
-      courses.map((c) =>
-        c.id.toString() === courseId ? { ...c, semesterId: null } : c
-      )
-    )
-
-    setIsActive(false)
-  }
-
-  const studyPlanCourses = courses.filter((c) => c.semesterId === null)
-
+const CourseCard = ({ id, code, name, creditHours }: courseCardProps) => {
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDragEnd}
-      className={`overflow-clip rounded-lg transition-all border border-neutral-700 shadow-md ${
-        isActive ? 'bg-neutral-800' : 'bg-neutral-900'
-      }`}
-    >
-      <header className="text-center font-semibold py-2">{name}</header>
-      <div className="min-w-40 flex flex-col gap-2 px-2">
-        {studyPlanCourses.map((c) => (
-          <Course key={c.id} {...c} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-interface CourseProps extends CourseData {}
-
-const Course = ({ id, code, name, creditHours }: CourseProps) => {
-  const handleDragStart = (e: React.DragEvent, id: number) => {
-    e.dataTransfer.setData('courseId', id.toString())
-  }
-
-  return (
-    <div
-      draggable="true"
-      onDragStart={(e) => handleDragStart(e, id)}
-      className="bg-neutral-800 active:cursor-grabbing p-2 shadow h-36 w-36 transition-all border border-neutral-700 rounded-md flex flex-col hover:bg-purple-500/30"
-    >
+    <div className="p-2 h-36 w-36 transition-all border border-neutral-400 shadow-md bg-neutral-200 rounded-md flex flex-col hover:bg-purple-500/30">
       <header className="font-semibold">{code}</header>
       <p className="line-clamp-3">{name}</p>
       <footer className="text-right mt-auto text-neutral-500">
@@ -158,30 +213,21 @@ const Course = ({ id, code, name, creditHours }: CourseProps) => {
   )
 }
 
-type CourseData = {
-  id: number
-  code: string
-  name: string
-  creditHours: number
-  sectionId: number
-  semesterId: number | null
+interface courseProps extends courseData {
+  onClick: any
 }
 
-const courseList: CourseData[] = [
-  {
-    id: 1,
-    code: 'CS116',
-    name: 'Computing Fundamentals',
-    creditHours: 3,
-    sectionId: 1,
-    semesterId: null,
-  },
-  {
-    id: 2,
-    code: 'CS263',
-    name: 'Database Management Systems',
-    creditHours: 3,
-    sectionId: 2,
-    semesterId: null,
-  },
-]
+const Course = ({ id, code, name, creditHours, onClick }: courseProps) => {
+  return (
+    <div
+      onClick={onClick}
+      className="p-2 h-36 w-36 transition-all border border-neutral-400 shadow-md bg-neutral-200 rounded-md flex flex-col hover:bg-purple-500/30"
+    >
+      <header className="font-semibold">{code}</header>
+      <p className="line-clamp-3">{name}</p>
+      <footer className="text-right mt-auto text-neutral-500">
+        {creditHours} Cr Hr
+      </footer>
+    </div>
+  )
+}
