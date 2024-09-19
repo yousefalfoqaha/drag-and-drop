@@ -369,7 +369,7 @@ export const sections: sectionData[] = [
   },
 ]
 
-export const flowsheet: flowsheetData = {
+export const initialFlowsheet: flowsheetData = {
   id: 1,
   name: 'Computer Science 2023/2024 - General Track',
   yearIds: [1, 2, 3, 4, 5],
